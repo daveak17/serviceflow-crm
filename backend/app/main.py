@@ -1,7 +1,8 @@
 from pathlib import Path
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 from app.core.config import settings
 from app.db.database import init_db
 from app.api import auth, clients, projects, tasks, time_logs, invoices, analytics
@@ -21,7 +22,10 @@ app.add_middleware(
     allow_headers=["*"]
 )
 
-STATIC_DIR = Path(__file__).resolve().parent.parent.parent / "frontend" / "static"
+BASE_DIR = Path(__file__).resolve().parent.parent.parent
+STATIC_DIR = BASE_DIR / "frontend" / "static"
+TEMPLATES_DIR = BASE_DIR / "frontend" / "templates"
+
 if STATIC_DIR.exists():
     app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
 
@@ -43,3 +47,13 @@ def health_check():
         "app": settings.APP_NAME,
         "env": settings.APP_ENV,
     }
+
+
+@app.get("/{full_path:path}")
+def serve_frontend(full_path: str):
+    if (full_path.startswith("api/") or
+        full_path in ("docs", "redoc", "openapi.json") or
+        full_path.startswith("static/")):
+        raise HTTPException(status_code=404)
+    index = TEMPLATES_DIR / "index.html"
+    return FileResponse(str(index))

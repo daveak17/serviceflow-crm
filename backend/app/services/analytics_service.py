@@ -1,7 +1,6 @@
 from decimal import Decimal
-from datetime import date
 from sqlalchemy.orm import Session
-from sqlalchemy import func, case, extract
+from sqlalchemy import func, extract
 from app.models.invoice import Invoice, InvoiceItem, Payment, InvoiceStatus
 from app.models.project import Project
 from app.models.time_log import TimeLog
@@ -15,123 +14,120 @@ MONTH_NAMES = {
 }
 
 
-def _invoice_total_subquery(db: Session):
-    """Subquery: invoice_id → subtotal from items."""
-    return (
+def _compute_invoice_total(invoice: Invoice) -> Decimal:
+    subtotal = sum(Decimal(str(item.subtotal)) for item in invoice.items)
+    tax = (subtotal * Decimal(str(invoice.tax_rate)) / 100).quantize(Decimal("0.01"))
+    return subtotal + tax
+
+
+def _compute_invoice_paid(invoice: Invoice) -> Decimal:
+    return sum(Decimal(str(p.amount)) for p in invoice.payments)
+
+
+def get_revenue_summary(db: Session, user_id: int) -> dict:
+    # Total invoiced — sum of all non-cancelled invoice totals
+    active_invoices = (
+        db.query(Invoice)
+        .filter(
+            Invoice.user_id == user_id,
+            Invoice.status != InvoiceStatus.cancelled
+        )
+        .all()
+    )
+
+    total_invoiced = Decimal("0")
+    for inv in active_invoices:
+        total_invoiced += _compute_invoice_total(inv)
+
+    # Total collected — sum of payments on non-cancelled invoices only
+    total_collected = Decimal("0")
+    for inv in active_invoices:
+        total_collected += _compute_invoice_paid(inv)
+
+    # Outstanding — sum of per-invoice balance due for sent/overdue invoices
+    # This is correct: max(total - paid, 0) per invoice
+    outstanding_invoices = (
+        db.query(Invoice)
+        .filter(
+            Invoice.user_id == user_id,
+            Invoice.status.in_([InvoiceStatus.sent, InvoiceStatus.overdue])
+        )
+        .all()
+    )
+
+    total_outstanding = Decimal("0")
+    total_overdue = Decimal("0")
+    for inv in outstanding_invoices:
+        total = _compute_invoice_total(inv)
+        paid = _compute_invoice_paid(inv)
+        balance = max(total - paid, Decimal("0"))
+        total_outstanding += balance
+        if inv.status == InvoiceStatus.overdue:
+            total_overdue += balance
+
+    return {
+        "total_invoiced": total_invoiced.quantize(Decimal("0.01")),
+        "total_collected": total_collected.quantize(Decimal("0.01")),
+        "total_outstanding": total_outstanding.quantize(Decimal("0.01")),
+        "total_overdue": total_overdue.quantize(Decimal("0.01"))
+    }
+
+
+def get_monthly_revenue(db: Session, user_id: int, months: int = 12) -> list[dict]:
+    # Subquery: invoice_id -> subtotal from invoice_items
+    item_totals = (
         db.query(
-            InvoiceItem.invoice_id,
-            func.sum(InvoiceItem.subtotal).label("items_subtotal")
+            InvoiceItem.invoice_id.label("invoice_id"),
+            func.coalesce(func.sum(InvoiceItem.subtotal), 0).label("subtotal_sum"),
         )
         .group_by(InvoiceItem.invoice_id)
         .subquery()
     )
 
-
-def get_revenue_summary(db: Session, user_id: int) -> dict:
-    item_totals = _invoice_total_subquery(db)
-
-    # Total invoiced (non-cancelled invoices only)
-    invoiced_row = (
-        db.query(
-            func.coalesce(
-                func.sum(
-                    item_totals.c.items_subtotal *
-                    (1 + Invoice.tax_rate / 100)
-                ), 0
-            ).label("total_invoiced")
-        )
-        .join(item_totals, Invoice.id == item_totals.c.invoice_id)
-        .filter(
-            Invoice.user_id == user_id,
-            Invoice.status != InvoiceStatus.cancelled
-        )
-        .first()
-    )
-
-    # Total collected (sum of all payments)
-    collected_row = (
-        db.query(
-            func.coalesce(func.sum(Payment.amount), 0).label("total_collected")
-        )
-        .join(Invoice, Payment.invoice_id == Invoice.id)
-        .filter(Invoice.user_id == user_id)
-        .first()
-    )
-
-    # Total overdue
-    overdue_row = (
-        db.query(
-            func.coalesce(
-                func.sum(
-                    item_totals.c.items_subtotal *
-                    (1 + Invoice.tax_rate / 100)
-                ), 0
-            ).label("total_overdue")
-        )
-        .join(item_totals, Invoice.id == item_totals.c.invoice_id)
-        .filter(
-            Invoice.user_id == user_id,
-            Invoice.status == InvoiceStatus.overdue
-        )
-        .first()
-    )
-
-    total_invoiced = Decimal(str(invoiced_row.total_invoiced)).quantize(Decimal("0.01"))
-    total_collected = Decimal(str(collected_row.total_collected)).quantize(Decimal("0.01"))
-    total_overdue = Decimal(str(overdue_row.total_overdue)).quantize(Decimal("0.01"))
-    total_outstanding = (total_invoiced - total_collected).quantize(Decimal("0.01"))
-
-    return {
-        "total_invoiced": total_invoiced,
-        "total_collected": total_collected,
-        "total_outstanding": total_outstanding,
-        "total_overdue": total_overdue
-    }
-
-
-def get_monthly_revenue(db: Session, user_id: int, months: int = 12) -> list[dict]:
-    item_totals = _invoice_total_subquery(db)
-
-    rows = (
+    # Total invoiced (WITH tax) grouped by invoice.issue_date month
+    invoiced_rows = (
         db.query(
             extract("year", Invoice.issue_date).label("year"),
             extract("month", Invoice.issue_date).label("month"),
             func.coalesce(
                 func.sum(
-                    item_totals.c.items_subtotal *
-                    (1 + Invoice.tax_rate / 100)
-                ), 0
-            ).label("total_invoiced")
+                    item_totals.c.subtotal_sum * (1 + (Invoice.tax_rate / 100))
+                ),
+                0
+            ).label("total_invoiced"),
         )
         .join(item_totals, Invoice.id == item_totals.c.invoice_id)
         .filter(
             Invoice.user_id == user_id,
-            Invoice.status != InvoiceStatus.cancelled
+            Invoice.status != InvoiceStatus.cancelled,
         )
         .group_by(
             extract("year", Invoice.issue_date),
-            extract("month", Invoice.issue_date)
+            extract("month", Invoice.issue_date),
         )
         .order_by(
             extract("year", Invoice.issue_date).desc(),
-            extract("month", Invoice.issue_date).desc()
+            extract("month", Invoice.issue_date).desc(),
         )
         .limit(months)
         .all()
     )
 
-    # Get collected per month
+    # Total collected grouped by Payment.payment_date month (exclude cancelled invoices)
     collected_rows = (
         db.query(
-            extract("year", Invoice.issue_date).label("year"),
-            extract("month", Invoice.issue_date).label("month"),
-            func.coalesce(func.sum(Payment.amount), 0).label("total_collected")
+            extract("year", Payment.payment_date).label("year"),
+            extract("month", Payment.payment_date).label("month"),
+            func.coalesce(func.sum(Payment.amount), 0).label("total_collected"),
         )
-        .join(Payment, Invoice.id == Payment.invoice_id)
-        .filter(Invoice.user_id == user_id)
+        .join(Invoice, Payment.invoice_id == Invoice.id)
+        .filter(
+            Invoice.user_id == user_id,
+            Invoice.status != InvoiceStatus.cancelled,
+        )
         .group_by(
-            extract("year", Invoice.issue_date),
-            extract("month", Invoice.issue_date)
+            extract("year", Payment.payment_date),
+            extract("month", Payment.payment_date),
         )
         .all()
     )
@@ -141,75 +137,67 @@ def get_monthly_revenue(db: Session, user_id: int, months: int = 12) -> list[dic
         for r in collected_rows
     }
 
-    result = []
-    for row in rows:
+    result: list[dict] = []
+    for row in invoiced_rows:
         year = int(row.year)
         month = int(row.month)
+
         result.append({
             "year": year,
             "month": month,
-            "month_name": MONTH_NAMES[month],
+            "month_name": MONTH_NAMES.get(month, str(month)),
             "total_invoiced": Decimal(str(row.total_invoiced)).quantize(Decimal("0.01")),
-            "total_collected": collected_map.get((year, month), Decimal("0")).quantize(Decimal("0.01"))
+            "total_collected": collected_map.get((year, month), Decimal("0")).quantize(Decimal("0.01")),
         })
 
     return result
 
 
 def get_top_clients(db: Session, user_id: int, limit: int = 5) -> list[dict]:
-    item_totals = _invoice_total_subquery(db)
-
-    rows = (
-        db.query(
-            Client.id.label("client_id"),
-            Client.name.label("client_name"),
-            func.coalesce(
-                func.sum(
-                    item_totals.c.items_subtotal *
-                    (1 + Invoice.tax_rate / 100)
-                ), 0
-            ).label("total_invoiced"),
-            func.count(Invoice.id).label("invoice_count")
-        )
-        .join(Invoice, Invoice.client_id == Client.id)
-        .join(item_totals, Invoice.id == item_totals.c.invoice_id)
+    invoices = (
+        db.query(Invoice)
         .filter(
             Invoice.user_id == user_id,
-            Invoice.status != InvoiceStatus.cancelled
+            Invoice.status != InvoiceStatus.cancelled,
+            Invoice.client_id.isnot(None)
         )
-        .group_by(Client.id, Client.name)
-        .order_by(func.sum(item_totals.c.items_subtotal).desc())
-        .limit(limit)
         .all()
     )
 
-    # Get collected per client
-    collected_rows = (
-        db.query(
-            Invoice.client_id,
-            func.coalesce(func.sum(Payment.amount), 0).label("total_collected")
-        )
-        .join(Payment, Invoice.id == Payment.invoice_id)
-        .filter(Invoice.user_id == user_id)
-        .group_by(Invoice.client_id)
-        .all()
-    )
+    client_totals: dict[int, dict] = {}
+    for inv in invoices:
+        cid = inv.client_id
+        if cid not in client_totals:
+            client_totals[cid] = {
+                "total_invoiced": Decimal("0"),
+                "total_collected": Decimal("0"),
+                "invoice_count": 0
+            }
+        client_totals[cid]["total_invoiced"] += _compute_invoice_total(inv)
+        client_totals[cid]["total_collected"] += _compute_invoice_paid(inv)
+        client_totals[cid]["invoice_count"] += 1
 
-    collected_map = {
-        r.client_id: Decimal(str(r.total_collected))
-        for r in collected_rows
-    }
+    # Sort by total invoiced descending, take top N
+    sorted_clients = sorted(
+        client_totals.items(),
+        key=lambda x: x[1]["total_invoiced"],
+        reverse=True
+    )[:limit]
 
-    return [
-        {
-            "client_id": row.client_id,
-            "client_name": row.client_name,
-            "total_invoiced": Decimal(str(row.total_invoiced)).quantize(Decimal("0.01")),
-            "total_collected": collected_map.get(row.client_id, Decimal("0")).quantize(Decimal("0.01")),
-            "invoice_count": row.invoice_count
-        }
-        for row in rows
-    ]
+    result = []
+    for client_id, totals in sorted_clients:
+        client = db.query(Client).filter(Client.id == client_id).first()
+        if not client:
+            continue
+        result.append({
+            "client_id": client_id,
+            "client_name": client.name,
+            "total_invoiced": totals["total_invoiced"].quantize(Decimal("0.01")),
+            "total_collected": totals["total_collected"].quantize(Decimal("0.01")),
+            "invoice_count": totals["invoice_count"]
+        })
+
+    return result
 
 
 def get_project_status_counts(db: Session, user_id: int) -> list[dict]:
@@ -230,9 +218,7 @@ def get_hours_summary(db: Session, user_id: int) -> dict:
         db.query(
             TimeLog.is_billable,
             func.coalesce(func.sum(TimeLog.hours), 0).label("total"),
-            func.coalesce(
-                func.sum(TimeLog.hours * TimeLog.hourly_rate), 0
-            ).label("value")
+            func.coalesce(func.sum(TimeLog.hours * TimeLog.hourly_rate), 0).label("value")
         )
         .filter(TimeLog.user_id == user_id)
         .group_by(TimeLog.is_billable)
@@ -259,8 +245,6 @@ def get_hours_summary(db: Session, user_id: int) -> dict:
 
 
 def get_outstanding_invoices(db: Session, user_id: int) -> list[dict]:
-    item_totals = _invoice_total_subquery(db)
-
     invoices = (
         db.query(Invoice)
         .filter(
@@ -273,11 +257,13 @@ def get_outstanding_invoices(db: Session, user_id: int) -> list[dict]:
 
     result = []
     for inv in invoices:
-        subtotal = sum(Decimal(str(item.subtotal)) for item in inv.items)
-        tax = (subtotal * Decimal(str(inv.tax_rate)) / 100).quantize(Decimal("0.01"))
-        total = subtotal + tax
-        paid = sum(Decimal(str(p.amount)) for p in inv.payments)
+        total = _compute_invoice_total(inv)
+        paid = _compute_invoice_paid(inv)
         balance_due = total - paid
+
+        # Fix Issue 3: skip fully paid invoices even if status not updated yet
+        if balance_due <= Decimal("0"):
+            continue
 
         client_name = None
         if inv.client_id:
