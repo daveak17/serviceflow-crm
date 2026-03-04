@@ -4,13 +4,21 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>ServiceFlow CRM</title>
-  <link rel="stylesheet" href="/static/css/app.css" />
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
   <link rel="stylesheet" href="/static/css/app.css?v=2">
   <link rel="apple-touch-icon" href="/static/images/favicon.png">
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
+
+<!-- MOBILE HEADER -->
+<div class="mobile-header" id="mobile-header">
+  <img src="/static/images/logo.png" alt="ServiceFlow" style="height:50px">
+  <button class="mobile-menu-btn" onclick="toggleMobileMenu()">☰</button>
+</div>
+
+<!-- SIDEBAR OVERLAY -->
+<div class="sidebar-overlay" id="sidebar-overlay" onclick="closeMobileMenu()"></div>
 
 <!-- AUTH SCREENS -->
 <div id="auth-screen" class="auth-screen">
@@ -70,6 +78,12 @@
       </a>
       <a href="#" class="nav-item" data-page="projects" onclick="navigate('projects')">
         <span class="nav-icon"><i class="fa-solid fa-folder-open"></i></span> Projects
+      </a>
+      <a href="#" class="nav-item" data-page="tasks" onclick="navigate('tasks')">
+        <span class="nav-icon"><i class="fa-solid fa-check-circle"></i></span> Tasks
+      </a>
+      <a href="#" class="nav-item" data-page="timelogs" onclick="navigate('timelogs')">
+        <span class="nav-icon">◷</span> Time Logs
       </a>
       <a href="#" class="nav-item" data-page="invoices" onclick="navigate('invoices')">
         <span class="nav-icon"><i class="fa-solid fa-file-invoice-dollar"></i></span> Invoices
@@ -145,6 +159,9 @@
         </div>
         <button class="btn btn-primary" onclick="openClientModal()">+ New Client</button>
       </div>
+      <div class="table-toolbar">
+        <input type="text" id="client-search" placeholder="Search clients..." oninput="filterClients()" />
+      </div>
       <div class="card">
         <table class="table" id="clients-table">
           <thead>
@@ -178,6 +195,17 @@
         </div>
         <button class="btn btn-primary" onclick="openInvoiceModal()">+ New Invoice</button>
       </div>
+      <div class="table-toolbar">
+        <input type="text" id="invoice-search" placeholder="Search by invoice number or client..." oninput="filterInvoices()" />
+        <select id="invoice-filter-status" onchange="filterInvoices()">
+          <option value="">All Statuses</option>
+          <option value="draft">Draft</option>
+          <option value="sent">Sent</option>
+          <option value="paid">Paid</option>
+          <option value="overdue">Overdue</option>
+          <option value="cancelled">Cancelled</option>
+        </select>
+      </div>
       <div class="card">
         <table class="table">
           <thead>
@@ -190,7 +218,104 @@
       </div>
     </section>
 
+        <!-- TASKS -->
+    <section id="page-tasks" class="page hidden">
+      <div class="page-header">
+        <div>
+          <h1>Tasks</h1>
+          <span class="page-subtitle">Manage work across all projects</span>
+        </div>
+        <button class="btn btn-primary" onclick="openTaskModal()">+ New Task</button>
+      </div>
+      <div class="task-filters">
+        <select id="task-filter-project" onchange="filterTasks()">
+          <option value="">All Projects</option>
+        </select>
+        <select id="task-filter-status" onchange="filterTasks()">
+          <option value="">All Statuses</option>
+          <option value="todo">To Do</option>
+          <option value="in_progress">In Progress</option>
+          <option value="done">Done</option>
+        </select>
+      </div>
+      <div class="task-columns" id="task-columns">
+        <div class="task-col">
+          <div class="task-col-header todo">To Do</div>
+          <div class="task-col-body" id="col-todo"></div>
+        </div>
+        <div class="task-col">
+          <div class="task-col-header in_progress">In Progress</div>
+          <div class="task-col-body" id="col-in_progress"></div>
+        </div>
+        <div class="task-col">
+          <div class="task-col-header done">Done</div>
+          <div class="task-col-body" id="col-done"></div>
+        </div>
+      </div>
+    </section>
+
+        <!-- TIME LOGS -->
+    <section id="page-timelogs" class="page hidden">
+      <div class="page-header">
+        <div>
+          <h1>Time Logs</h1>
+          <span class="page-subtitle">Track billable and non-billable hours</span>
+        </div>
+        <button class="btn btn-primary" onclick="openTimeLogModal()">+ Log Time</button>
+      </div>
+      <div class="task-filters">
+        <select id="timelog-filter-project" onchange="filterTimeLogs()">
+          <option value="">All Projects</option>
+        </select>
+        <select id="timelog-filter-billable" onchange="filterTimeLogs()">
+          <option value="">All Types</option>
+          <option value="true">Billable</option>
+          <option value="false">Non-billable</option>
+        </select>
+      </div>
+      <div class="card">
+        <table class="table">
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Project</th>
+              <th>Description</th>
+              <th>Hours</th>
+              <th>Rate</th>
+              <th>Value</th>
+              <th>Type</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="timelogs-tbody"></tbody>
+        </table>
+      </div>
+    </section>
+
   </main>
+</div>
+
+<!-- FLOATING ACTION BUTTON -->
+<div class="fab-container" id="fab-container">
+  <button class="fab-main" id="fab-main" onclick="toggleFab()">+</button>
+  <div class="fab-actions" id="fab-actions">
+    <div class="fab-action" onclick="fabAction('dashboard')">
+      <div class="fab-action-label">View Dashboard</div>
+      <button class="fab-action-btn">▦</button>
+    </div>
+    <div class="fab-action" onclick="fabAction('client')">
+      <div class="fab-action-label">Add Client</div>
+      <button class="fab-action-btn">◎</button>
+    </div>
+    <div class="fab-action" onclick="fabAction('timelog')">
+      <div class="fab-action-label">Log Time</div>
+      <button class="fab-action-btn">◷</button>
+    </div>
+    <div class="fab-action" onclick="fabAction('task')">
+      <div class="fab-action-label">Add Task</div>
+      <button class="fab-action-btn">✓</button>
+    </div>
+  </div>
 </div>
 
 <!-- MODALS -->
@@ -211,6 +336,8 @@
 <script src="/static/js/dashboard.js"></script>
 <script src="/static/js/clients.js"></script>
 <script src="/static/js/projects.js"></script>
+<script src="/static/js/tasks.js"></script>
+<script src="/static/js/timelogs.js"></script>
 <script src="/static/js/invoices.js"></script>
 <script src="/static/js/app.js"></script>
 </body>

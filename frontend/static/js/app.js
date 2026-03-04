@@ -38,6 +38,10 @@ function closeModal() {
 
 // ── Navigation ──
 async function navigate(page) {
+  // Close mobile menu if open
+  closeMobileMenu();
+
+  // Update sidebar nav
   document.querySelectorAll('.page').forEach(p => {
     p.classList.toggle('active', p.id === 'page-' + page);
     p.classList.toggle('hidden', p.id !== 'page-' + page);
@@ -49,7 +53,9 @@ async function navigate(page) {
   if (page === 'dashboard') await loadDashboard();
   if (page === 'clients') await loadClients();
   if (page === 'projects') { await loadClients(); await loadProjects(); }
+  if (page === 'tasks') await loadTasks();
   if (page === 'invoices') { await loadClients(); await loadInvoices(); }
+  if (page === 'timelogs') await loadTimeLogs();
 }
 
 // ── Auth Screen ──
@@ -66,6 +72,45 @@ window.addEventListener('resize', () => {
     if (typeof revenueChart !== 'undefined' && revenueChart) revenueChart.resize();
     if (typeof projectChart !== 'undefined' && projectChart) projectChart.resize();
   }, 100);
+});
+
+// ── Mobile Menu ──
+function toggleMobileMenu() {
+  const sidebar = document.querySelector('.sidebar');
+  const overlay = document.getElementById('sidebar-overlay');
+  sidebar.classList.toggle('mobile-open');
+  overlay.classList.toggle('active');
+}
+
+function closeMobileMenu() {
+  const sidebar = document.querySelector('.sidebar');
+  const overlay = document.getElementById('sidebar-overlay');
+  sidebar.classList.remove('mobile-open');
+  overlay.classList.remove('active');
+}
+
+// ── FAB ──
+let fabOpen = false;
+
+function toggleFab() {
+  fabOpen = !fabOpen;
+  document.getElementById('fab-main').classList.toggle('open', fabOpen);
+  document.getElementById('fab-actions').classList.toggle('open', fabOpen);
+}
+
+function fabAction(action) {
+  toggleFab();
+  if (action === 'dashboard') navigate('dashboard');
+  if (action === 'client') { navigate('clients'); setTimeout(() => openClientModal(), 300); }
+  if (action === 'timelog') { navigate('timelogs'); setTimeout(() => openTimeLogModal(), 300); }
+  if (action === 'task') { navigate('tasks'); setTimeout(() => openTaskModal(), 300); }
+}
+
+// Close FAB when tapping outside
+document.addEventListener('click', (e) => {
+  if (fabOpen && !document.getElementById('fab-container').contains(e.target)) {
+    toggleFab();
+  }
 });
 
 // ── Init App ──

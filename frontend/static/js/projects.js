@@ -18,7 +18,7 @@ function renderProjects() {
   const grid = document.getElementById('projects-grid');
   if (allProjects.length === 0) {
     grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1">
-      <div class="empty-state-icon">◈</div>
+      <span class="nav-icon"><i class="fa-solid fa-folder-open"></i></span>
       <div class="empty-state-text">No projects yet. Create your first project.</div>
     </div>`;
     return;

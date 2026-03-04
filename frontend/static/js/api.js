@@ -73,4 +73,16 @@ const api = {
   // Analytics
   getDashboard: () => apiFetch('/api/analytics/dashboard'),
   getMonthlyRevenue: () => apiFetch('/api/analytics/revenue/monthly?months=6'),
+
+    // Tasks
+  getTasks: (projectId) => apiFetch('/api/tasks' + (projectId ? `?project_id=${projectId}` : '')),
+  createTask: (data) => apiFetch('/api/tasks', { method: 'POST', body: JSON.stringify(data) }),
+  updateTask: (id, data) => apiFetch(`/api/tasks/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  deleteTask: (id) => apiFetch(`/api/tasks/${id}`, { method: 'DELETE' }),
+
+  // Time Logs
+  getTimeLogs: (projectId) => apiFetch('/api/time-logs' + (projectId ? `?project_id=${projectId}` : '')),
+  createTimeLog: (data) => apiFetch('/api/time-logs', { method: 'POST', body: JSON.stringify(data) }),
+  updateTimeLog: (id, data) => apiFetch(`/api/time-logs/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  deleteTimeLog: (id) => apiFetch(`/api/time-logs/${id}`, { method: 'DELETE' }),
 };

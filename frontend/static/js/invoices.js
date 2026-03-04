@@ -1,26 +1,47 @@
 let allInvoices = [];
 let invoiceItems = [];
 
+function filterInvoices() {
+  const query = document.getElementById('invoice-search').value.toLowerCase().trim();
+  const status = document.getElementById('invoice-filter-status').value;
+
+  const filtered = allInvoices.filter(inv => {
+    const client = allClients.find(c => c.id === inv.client_id);
+    const clientName = (client?.name || '').toLowerCase();
+    const invNumber = inv.invoice_number.toLowerCase();
+
+    const matchSearch = !query ||
+      invNumber.includes(query) ||
+      clientName.includes(query);
+
+    const matchStatus = !status || inv.status === status;
+
+    return matchSearch && matchStatus;
+  });
+
+  renderInvoiceRows(filtered);
+}
+
 async function loadInvoices() {
   try {
     allInvoices = await api.getInvoices() || [];
-    renderInvoices();
+    renderInvoiceRows(allInvoices);
   } catch (err) {
     showToast('Failed to load invoices', 'error');
   }
 }
 
-function renderInvoices() {
+function renderInvoiceRows(invoices) {
   const tbody = document.getElementById('invoices-tbody');
-  if (allInvoices.length === 0) {
+  if (invoices.length === 0) {
     tbody.innerHTML = `<tr><td colspan="6"><div class="empty-state">
       <div class="empty-state-icon">◻</div>
-      <div class="empty-state-text">No invoices yet.</div>
+      <div class="empty-state-text">No invoices found.</div>
     </div></td></tr>`;
     return;
   }
 
-  tbody.innerHTML = allInvoices.map(inv => {
+  tbody.innerHTML = invoices.map(inv => {
     const subtotal = inv.items.reduce((s, i) => s + parseFloat(i.subtotal), 0);
     const tax = subtotal * parseFloat(inv.tax_rate) / 100;
     const total = subtotal + tax;

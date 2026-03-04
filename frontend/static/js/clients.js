@@ -3,22 +3,37 @@ let allClients = [];
 async function loadClients() {
   try {
     allClients = await api.getClients() || [];
-    renderClients();
+    renderClients(allClients);
   } catch (err) {
     showToast('Failed to load clients', 'error');
   }
 }
 
-function renderClients() {
+function filterClients() {
+  const query = document.getElementById('client-search').value.toLowerCase().trim();
+  if (!query) {
+    renderClients(allClients);
+    return;
+  }
+  const filtered = allClients.filter(c =>
+    (c.name || '').toLowerCase().includes(query) ||
+    (c.company || '').toLowerCase().includes(query) ||
+    (c.email || '').toLowerCase().includes(query) ||
+    (c.phone || '').toLowerCase().includes(query)
+  );
+  renderClients(filtered);
+}
+
+function renderClients(clients) {
   const tbody = document.getElementById('clients-tbody');
-  if (allClients.length === 0) {
+  if (clients.length === 0) {
     tbody.innerHTML = `<tr><td colspan="5"><div class="empty-state">
       <div class="empty-state-icon">◎</div>
-      <div class="empty-state-text">No clients yet. Add your first client.</div>
+      <div class="empty-state-text">No clients found.</div>
     </div></td></tr>`;
     return;
   }
-  tbody.innerHTML = allClients.map(c => `
+  tbody.innerHTML = clients.map(c => `
     <tr>
       <td><strong>${esc(c.name)}</strong></td>
       <td>${esc(c.company || '—')}</td>
@@ -83,9 +98,7 @@ async function saveClient(id) {
     address: document.getElementById('c-address').value.trim() || null,
     notes: document.getElementById('c-notes').value.trim() || null,
   };
-
   if (!data.name) { showToast('Name is required', 'error'); return; }
-
   try {
     if (id) {
       await api.updateClient(id, data);
