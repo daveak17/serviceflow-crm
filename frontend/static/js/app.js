@@ -62,6 +62,7 @@ async function navigate(page) {
 function showAuthScreen() {
   document.getElementById('auth-screen').classList.remove('hidden');
   document.getElementById('app').classList.add('hidden');
+  document.getElementById('mobile-header').style.display = 'none';
 }
 
 // ── Responsive resize handler ──
@@ -120,6 +121,8 @@ async function initApp() {
 
   document.getElementById('auth-screen').classList.add('hidden');
   document.getElementById('app').classList.remove('hidden');
+  document.getElementById('mobile-header').style.display = '';
+  navigate('dashboard');
 
   const user = getUser();
   if (user) {
