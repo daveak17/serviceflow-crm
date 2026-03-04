@@ -22,9 +22,10 @@ app.add_middleware(
     allow_headers=["*"]
 )
 
-BASE_DIR = Path(__file__).resolve().parent.parent.parent
-STATIC_DIR = BASE_DIR / "frontend" / "static"
-TEMPLATES_DIR = BASE_DIR / "frontend" / "templates"
+BASE_DIR = Path(__file__).resolve().parent.parent  
+FRONTEND_DIR = BASE_DIR.parent / "frontend"
+TEMPLATES_DIR = FRONTEND_DIR / "templates"
+STATIC_DIR = FRONTEND_DIR / "static"
 
 if STATIC_DIR.exists():
     app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
