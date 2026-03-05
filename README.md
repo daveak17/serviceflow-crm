@@ -1,194 +1,176 @@
 # ServiceFlow CRM
 
-ServiceFlow CRM is a multi-user SaaS CRM platform built for freelancers and small agencies.
+A full-stack multi-tenant CRM SaaS platform built for freelancers and small agencies.
 
-The goal of the system is to provide structured client management, project tracking, invoicing, payments, and revenue analytics inside a secure, production-ready web application.
+ServiceFlow provides structured client management, project tracking, time logging, invoicing, payment recording, and a live revenue analytics dashboard — inside a secure, production-deployed web application.
+
+**Live Demo:** https://serviceflow-crm-production.up.railway.app  
+**Demo Login:** demo@serviceflow.com / demo1234
+
+---
+
+## Features
+
+- **Authentication** — JWT-based login and registration with bcrypt password hashing
+- **Clients** — Full CRUD with search and filtering
+- **Projects** — Track status, budget, deadlines, and client assignments
+- **Tasks** — Kanban-style board with priority levels and status columns
+- **Time Logs** — Billable and non-billable hours with hourly rate tracking
+- **Invoicing** — Line items, tax rate, status workflow (draft → sent → paid/overdue), duplicate protection
+- **Payments** — Record payments against invoices with automatic balance calculation
+- **Analytics Dashboard** — Revenue summary, monthly breakdown, top clients, project status distribution, outstanding invoices
+- **Multi-tenant** — Each user only accesses their own data enforced at every layer
+- **Responsive UI** — Full desktop sidebar layout + mobile header with slide-out navigation and FAB quick actions
 
 ---
 
 ## Architecture
 
-This project follows a clean backend/frontend separation.
-
-### Backend
-- Python
-- FastAPI
-- SQLAlchemy ORM
-- MySQL / MariaDB
-- JWT authentication (python-jose)
-- Password hashing (bcrypt via passlib)
-- Pydantic validation
-
-### Frontend
-- HTML
-- CSS
-- Vanilla JavaScript
-- Fetch API
-- Chart.js (for analytics dashboard)
-
----
-
-## Current Status
-
-### Implemented
-- User registration
-- User login with JWT authentication
-- Password hashing with bcrypt
-- Protected routes
-- Database connection using SQLAlchemy
-- Relational schema foundation
-- Service layer architecture
-
-### In Progress
-- Clients CRUD
-- Projects CRUD
-- Tasks management
-- Time tracking
-- Invoicing system
-- Payment tracking
-- Revenue analytics dashboard
-
----
-
-## Project Structure
-
 ```
-serviceflow-crm
-│
-├── backend
-│   ├── app
-│   ├── scripts
+serviceflow-crm/
+├── backend/
+│   ├── app/
+│   │   ├── api/          # FastAPI routers
+│   │   ├── core/         # Config, JWT, security
+│   │   ├── db/           # Database connection, session
+│   │   ├── models/       # SQLAlchemy models
+│   │   ├── schemas/      # Pydantic validation schemas
+│   │   ├── services/     # Business logic layer
+│   │   └── main.py
+│   ├── seed_data.py
 │   ├── requirements.txt
 │   └── .env.example
-│
-├── frontend
-│
-├── logs
-│
-├── .gitignore
+├── frontend/
+│   ├── static/
+│   │   ├── css/
+│   │   ├── js/
+│   │   └── images/
+│   └── templates/
+│       └── index.html
+├── Procfile
+├── requirements.txt
 └── README.md
 ```
 
+### Backend Stack
+- **Python** + **FastAPI** + **Uvicorn**
+- **SQLAlchemy ORM** with relational schema and foreign key enforcement
+- **MySQL** database
+- **JWT authentication** via python-jose
+- **bcrypt** password hashing via passlib
+- **Pydantic** request/response validation
+
+### Frontend Stack
+- Vanilla **HTML**, **CSS**, **JavaScript**
+- **Fetch API** for all HTTP communication
+- **Chart.js** for analytics charts
+- Single-page application served directly from FastAPI
+
+### Architecture Patterns
+- Service layer returning `(result, error)` tuples for clean error handling
+- Ownership validation at every endpoint — users cannot access other users' data
+- Pydantic schemas enforce input validation before reaching the database
+- SQLAlchemy models with enums for status fields
+
 ---
 
-## Setup
+## Local Setup
+
+### Prerequisites
+- Python 3.10+
+- MySQL running locally
 
 ### 1. Clone the repository
-
-```
+```bash
 git clone https://github.com/daveak17/serviceflow-crm.git
 cd serviceflow-crm
 ```
 
----
-
-## Backend Setup (Windows PowerShell)
-
-```
+### 2. Backend setup (Windows PowerShell)
+```powershell
 cd backend
 python -m venv .venv
 .\.venv\Scripts\Activate.ps1
 pip install -r requirements.txt
 copy .env.example .env
-uvicorn app.main:app --reload
 ```
 
----
-
-## Backend Setup (Linux / macOS)
-
-```
+### 2. Backend setup (Linux / macOS)
+```bash
 cd backend
 python -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
 cp .env.example .env
+```
+
+### 3. Configure environment variables
+Edit `backend/.env`:
+```
+DATABASE_URL=mysql+pymysql://user:password@localhost:3306/serviceflow_db
+SECRET_KEY=your_secret_key_here
+ALGORITHM=HS256
+ACCESS_TOKEN_EXPIRE_MINUTES=60
+APP_NAME=ServiceFlow CRM
+APP_ENV=development
+DEBUG=True
+ALLOWED_ORIGINS=http://localhost:8000
+```
+
+### 4. Run the application
+```bash
+cd backend
 uvicorn app.main:app --reload
 ```
+
+Open: http://localhost:8000
+
+### 5. Seed demo data (optional)
+```bash
+cd backend
+python seed_data.py
+```
+
+Demo credentials: `demo@serviceflow.com` / `demo1234`
 
 ---
 
 ## API Documentation
 
-Once running, open:
-
+Swagger UI available at:
 ```
 http://localhost:8000/docs
 ```
 
-Swagger UI will be available automatically.
+All protected endpoints require a Bearer token in the Authorization header.
 
 ---
 
-## Environment Variables
+## Security
 
-Create a `.env` file inside the backend folder based on `.env.example`.
-
-Example:
-
-```
-DATABASE_URL=mysql+pymysql://user:password@localhost:3306/serviceflow
-JWT_SECRET_KEY=change_me
-JWT_ALGORITHM=HS256
-ACCESS_TOKEN_EXPIRE_MINUTES=60
-```
-
-Never commit real secrets to the repository.
+- Passwords hashed with bcrypt (never stored in plain text)
+- JWT tokens with configurable expiry
+- Every protected endpoint validates token and user ownership
+- Cross-user data access prevented at the service layer
+- Secrets managed via environment variables (never committed)
+- `UniqueConstraint` on invoice numbers with 409 conflict response
 
 ---
 
-## Security Features
+## Deployment
 
-- Bcrypt password hashing
-- JWT access tokens
-- Token expiration validation
-- User ownership validation for protected resources
-- Environment variable configuration
-- Relational integrity via foreign keys
+Deployed on **Railway** with a managed MySQL database.
 
----
-
-## Development Approach
-
-The project follows structured commits and modular development:
-
-- Models layer
-- Schemas layer
-- Services layer
-- API routers
-- Authentication dependency injection
-
-Each feature is implemented incrementally and version controlled with meaningful commit messages.
-
----
-
-## Deployment Target
-
-Planned production environment:
-
-- Ubuntu VPS
-- Nginx reverse proxy
-- systemd service
-- SSL certificate
-- Environment-based configuration
+- FastAPI app served via Uvicorn on dynamic `$PORT`
+- MySQL 9.4 on Railway internal network
+- Environment variables configured via Railway dashboard
+- Auto-deploy on push to `main` branch via GitHub integration
 
 ---
 
 ## Author
 
-David Akoda  
-Junior Software Engineer  
-Focused on full stack development, SaaS systems, and production-ready backend architecture.
+**David Akoda**  
+Junior Software Engineer — full-stack development, SaaS systems, production-ready backend architecture.
 
----
-
-## Vision
-
-By completion, ServiceFlow CRM will be a fully functional multi tenant CRM SaaS platform with:
-
-- Secure authentication
-- Client and project management
-- Automated invoicing
-- Payment tracking
-- Revenue analytics dashboard
-- Production deployment on Linux VPS
+GitHub: https://github.com/daveak17
