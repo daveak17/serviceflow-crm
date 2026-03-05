@@ -1032,6 +1032,7 @@ textarea {
   /* Show mobile chrome */
   .mobile-header { display: flex; }
   .fab-container { display: flex; }
+  .sidebar-logo {display: none;}
 
   /* Hide desktop sidebar */
   .sidebar {
