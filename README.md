@@ -24,6 +24,33 @@ ServiceFlow provides structured client management, project tracking, time loggin
 
 ---
 
+## Screenshots
+
+### Login
+![Login](docs/screenshots/01-login.png)
+
+### Dashboard
+![Dashboard](docs/screenshots/02-dashboard.png)
+
+![Dashboard Bottom](docs/screenshots/03-dashboard-bottom.png)
+
+### Clients
+![Clients](docs/screenshots/04-clients.png)
+
+### Projects
+![Projects](docs/screenshots/05-projects.png)
+
+### Tasks
+![Tasks](docs/screenshots/06-tasks.png)
+
+### Time Logs
+![Time Logs](docs/screenshots/07-timelogs.png)
+
+### Invoices
+![Invoices](docs/screenshots/08-invoices.png)
+
+---
+
 ## Architecture
 
 ```
