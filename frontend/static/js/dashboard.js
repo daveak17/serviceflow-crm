@@ -10,7 +10,8 @@ async function loadDashboard() {
     document.getElementById('stat-invoiced').textContent = fmt(data.revenue.total_invoiced);
     document.getElementById('stat-collected').textContent = fmt(data.revenue.total_collected);
     document.getElementById('stat-outstanding').textContent = fmt(data.revenue.total_outstanding);
-    document.getElementById('stat-hours').textContent = data.hours.billable_hours + 'h';
+    document.getElementById('stat-net-income').textContent = fmt(data.revenue.net_income);
+    
 
     // Monthly revenue chart
     const monthly = await api.getMonthlyRevenue();

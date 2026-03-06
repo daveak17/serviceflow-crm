@@ -8,6 +8,7 @@ class RevenueSummary(BaseModel):
     total_collected: Decimal
     total_outstanding: Decimal
     total_overdue: Decimal
+    net_income: Decimal
 
 
 class MonthlyRevenue(BaseModel):

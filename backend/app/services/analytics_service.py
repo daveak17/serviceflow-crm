@@ -23,6 +23,8 @@ def _compute_invoice_total(invoice: Invoice) -> Decimal:
 def _compute_invoice_paid(invoice: Invoice) -> Decimal:
     return sum(Decimal(str(p.amount)) for p in invoice.payments)
 
+def _compute_invoice_subtotal(invoice: Invoice) -> Decimal:
+    return sum(Decimal(str(item.subtotal)) for item in invoice.items)
 
 def get_revenue_summary(db: Session, user_id: int) -> dict:
     # Total invoiced — sum of all non-cancelled invoice totals
@@ -65,11 +67,24 @@ def get_revenue_summary(db: Session, user_id: int) -> dict:
         if inv.status == InvoiceStatus.overdue:
             total_overdue += balance
 
+    
+    net_income = Decimal("0")
+    for inv in active_invoices:
+        paid = _compute_invoice_paid(inv)
+        if paid <= Decimal("0"):
+            continue
+        subtotal = _compute_invoice_subtotal(inv)
+        total = _compute_invoice_total(inv)
+        if total > Decimal("0"):
+            tax_ratio = (total - subtotal) / total
+            net_income += paid * (1 - tax_ratio)
+
     return {
         "total_invoiced": total_invoiced.quantize(Decimal("0.01")),
         "total_collected": total_collected.quantize(Decimal("0.01")),
         "total_outstanding": total_outstanding.quantize(Decimal("0.01")),
-        "total_overdue": total_overdue.quantize(Decimal("0.01"))
+        "total_overdue": total_overdue.quantize(Decimal("0.01")),
+        "net_income": net_income.quantize(Decimal("0.01"))
     }
 
 
