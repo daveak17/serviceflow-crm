@@ -30,7 +30,10 @@ async function loadDashboard() {
             <div class="client-row-name">${esc(c.client_name)}</div>
             <div class="client-row-sub">${c.invoice_count} invoice${c.invoice_count !== 1 ? 's' : ''}</div>
           </div>
-          <div class="client-row-amount">${fmt(c.total_collected)}</div>
+          <div style="text-align:right">
+            <div class="client-row-amount">${fmt(c.total_invoiced)}</div>
+            <div class="client-row-sub" style="color:var(--green)">${fmt(c.total_collected)} collected</div>
+          </div>
         </div>`).join('');
     }
 
