@@ -45,6 +45,7 @@ function renderInvoiceRows(invoices) {
     const subtotal = inv.items.reduce((s, i) => s + parseFloat(i.subtotal), 0);
     const tax = subtotal * parseFloat(inv.tax_rate) / 100;
     const total = subtotal + tax;
+    const amountPaid = inv.payments.reduce((s, p) => s + parseFloat(p.amount), 0);
     const client = allClients.find(c => c.id === inv.client_id);
 
     return `<tr>
@@ -56,7 +57,7 @@ function renderInvoiceRows(invoices) {
       <td>
         <div class="action-btns">
           ${inv.status === 'sent' || inv.status === 'overdue'
-            ? `<button class="btn btn-primary btn-sm" onclick="openPaymentModal(${inv.id}, ${total})">Pay</button>` : ''}
+            ? `<button class="btn btn-primary btn-sm" onclick="openPaymentModal(${inv.id}, ${total}, ${amountPaid})">Pay</button>` : ''}
           ${inv.status === 'draft'
             ? `<button class="btn btn-secondary btn-sm" onclick="markSent(${inv.id})">Send</button>` : ''}
           ${inv.status === 'draft' || inv.status === 'cancelled'
@@ -193,13 +194,14 @@ async function markSent(id) {
   }
 }
 
-function openPaymentModal(invoiceId, total) {
+function openPaymentModal(invoiceId, total, amountPaid = 0) {
+  const balanceDue = Math.max(total - amountPaid, 0).toFixed(2);
   const today = new Date().toISOString().slice(0, 10);
   document.getElementById('modal-title').textContent = 'Record Payment';
   document.getElementById('modal-body').innerHTML = `
     <div class="form-group">
       <label>Amount</label>
-      <input id="pay-amount" type="number" value="${total}" min="0.01" step="0.01" />
+      <input id="pay-amount" type="number" value="${balanceDue}" min="0.01" step="0.01" />
     </div>
     <div class="form-group">
       <label>Payment Date</label>
