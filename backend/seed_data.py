@@ -184,7 +184,7 @@ def seed(db: Session):
          {"description": "Testing and documentation", "quantity": 4, "unit_price": 85}],
         tax_rate=10, status=InvoiceStatus.paid,
         issue_days_ago=70, due_days_from_issue=30,
-        payments=[{"amount": 1820, "days_ago": 50}])
+        payments=[{"amount": 1991.0, "days_ago": 50}])
 
     make_invoice(db, "INV-2025-002", clients[0], projects[0],
         [{"description": "Brand Strategy Workshop — 12hrs", "quantity": 12, "unit_price": 95},
@@ -192,14 +192,14 @@ def seed(db: Session):
          {"description": "Style Guide Document — 8hrs", "quantity": 8, "unit_price": 95}],
         tax_rate=10, status=InvoiceStatus.paid,
         issue_days_ago=38, due_days_from_issue=30,
-        payments=[{"amount": 2000, "days_ago": 30}, {"amount": 2090, "days_ago": 15}])
+        payments=[{"amount": 2090, "days_ago": 30}, {"amount": 2090, "days_ago": 15}])
 
     make_invoice(db, "INV-2026-001", clients[1], projects[1],
         [{"description": "Shopify Setup & Configuration", "quantity": 6, "unit_price": 110},
          {"description": "Product Catalogue Build", "quantity": 8, "unit_price": 110}],
         tax_rate=8, status=InvoiceStatus.paid,
         issue_days_ago=14, due_days_from_issue=14,
-        payments=[{"amount": 1555.2, "days_ago": 5}])
+        payments=[{"amount": 1663.2, "days_ago": 5}])
 
     make_invoice(db, "INV-2026-002", clients[2], projects[2],
         [{"description": "Wireframes & User Flows — 10hrs", "quantity": 10, "unit_price": 100},
