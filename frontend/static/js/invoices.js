@@ -34,7 +34,7 @@ async function loadInvoices() {
 function renderInvoiceRows(invoices) {
   const tbody = document.getElementById('invoices-tbody');
   if (invoices.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="6"><div class="empty-state">
+    tbody.innerHTML = `<tr><td colspan="7"><div class="empty-state">
       <div class="empty-state-icon">◻</div>
       <div class="empty-state-text">No invoices found.</div>
     </div></td></tr>`;
@@ -46,26 +46,57 @@ function renderInvoiceRows(invoices) {
     const tax = subtotal * parseFloat(inv.tax_rate) / 100;
     const total = subtotal + tax;
     const amountPaid = inv.payments.reduce((s, p) => s + parseFloat(p.amount), 0);
+    const balanceDue = Math.max(total - amountPaid, 0);
     const client = allClients.find(c => c.id === inv.client_id);
+    const hasPayments = inv.payments.length > 0;
 
-    return `<tr>
-      <td><strong>${esc(inv.invoice_number)}</strong></td>
-      <td>${client ? esc(client.name) : '—'}</td>
-      <td>${fmt(total)}</td>
-      <td>${badge(inv.status)}</td>
-      <td>${inv.due_date}</td>
-      <td>
-        <div class="action-btns">
-          ${inv.status === 'sent' || inv.status === 'overdue'
-            ? `<button class="btn btn-primary btn-sm" onclick="openPaymentModal(${inv.id}, ${total}, ${amountPaid})">Pay</button>` : ''}
-          ${inv.status === 'draft'
-            ? `<button class="btn btn-secondary btn-sm" onclick="markSent(${inv.id})">Send</button>` : ''}
-          ${inv.status === 'draft' || inv.status === 'cancelled'
-            ? `<button class="btn btn-danger btn-sm" onclick="deleteInvoice(${inv.id})">Delete</button>` : ''}
-        </div>
-      </td>
-    </tr>`;
+    const paymentRows = inv.payments.map(p => `
+      <tr class="payment-detail-row" id="payment-rows-${inv.id}" style="display:none;background:#f9fafb">
+        <td colspan="2" style="padding:8px 12px;font-size:12px;color:var(--text-secondary)">
+          <i class="fa-solid fa-circle-check" style="color:var(--green);margin-right:6px"></i>
+          Payment recorded
+        </td>
+        <td style="padding:8px 12px;font-size:12px;font-weight:600;color:var(--green)">${fmt(p.amount)}</td>
+        <td style="padding:8px 12px;font-size:12px;color:var(--text-secondary)">${p.payment_date}</td>
+        <td style="padding:8px 12px;font-size:12px;color:var(--text-secondary)">${p.notes || '—'}</td>
+        <td colspan="2"></td>
+      </tr>`).join('');
+
+    return `
+      <tr onclick="togglePayments(${inv.id})" style="cursor:${hasPayments ? 'pointer' : 'default'}">
+        <td>
+          <strong>${esc(inv.invoice_number)}</strong>
+          ${hasPayments ? `<span style="font-size:11px;color:var(--accent);margin-left:6px">▾ ${inv.payments.length} payment${inv.payments.length > 1 ? 's' : ''}</span>` : ''}
+        </td>
+        <td>${client ? esc(client.name) : '—'}</td>
+        <td>${fmt(total)}</td>
+        <td>${balanceDue > 0 && amountPaid > 0
+          ? `<span style="font-size:12px;color:var(--yellow);font-weight:600">${fmt(balanceDue)} due</span>`
+          : balanceDue === 0 && amountPaid > 0
+          ? `<span style="font-size:12px;color:var(--green);font-weight:600">Paid in full</span>`
+          : '—'}</td>
+        <td>${badge(inv.status)}</td>
+        <td>${inv.due_date}</td>
+        <td>
+          <div class="action-btns">
+            ${inv.status === 'sent' || inv.status === 'overdue'
+              ? `<button class="btn btn-primary btn-sm" onclick="event.stopPropagation();openPaymentModal(${inv.id}, ${total}, ${amountPaid})">Pay</button>` : ''}
+            ${inv.status === 'draft'
+              ? `<button class="btn btn-secondary btn-sm" onclick="event.stopPropagation();markSent(${inv.id})">Send</button>` : ''}
+            ${inv.status === 'draft' || inv.status === 'cancelled'
+              ? `<button class="btn btn-danger btn-sm" onclick="event.stopPropagation();deleteInvoice(${inv.id})">Delete</button>` : ''}
+          </div>
+        </td>
+      </tr>
+      ${paymentRows}`;
   }).join('');
+}
+
+function togglePayments(invoiceId) {
+  const rows = document.querySelectorAll(`#payment-rows-${invoiceId}`);
+  rows.forEach(row => {
+    row.style.display = row.style.display === 'none' ? 'table-row' : 'none';
+  });
 }
 
 function openInvoiceModal() {
