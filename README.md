@@ -1,26 +1,14 @@
 # ServiceFlow CRM
 
-A full-stack multi-tenant CRM SaaS platform built for freelancers and small agencies.
+A multi-tenant CRM SaaS platform for freelancers and small agencies. Built with FastAPI, MySQL, and vanilla JavaScript. Deployed on Railway.
 
-ServiceFlow provides structured client management, project tracking, time logging, invoicing, payment recording, and a live revenue analytics dashboard — inside a secure, production-deployed web application.
+**Live Demo:** https://serviceflow-crm-production.up.railway.app
 
-**Live Demo:** https://serviceflow-crm-production.up.railway.app  
-**Demo Login:** demo@serviceflow.com / demo1234
-
----
-
-## Features
-
-- **Authentication** — JWT-based login and registration with bcrypt password hashing
-- **Clients** — Full CRUD with search and filtering
-- **Projects** — Track status, budget, deadlines, and client assignments
-- **Tasks** — Kanban-style board with priority levels and status columns
-- **Time Logs** — Billable and non-billable hours with hourly rate tracking
-- **Invoicing** — Line items, tax rate, status workflow (draft → sent → paid/overdue), duplicate protection
-- **Payments** — Record payments against invoices with automatic balance calculation
-- **Analytics Dashboard** — Revenue summary, monthly breakdown, top clients, project status distribution, outstanding invoices
-- **Multi-tenant** — Each user only accesses their own data enforced at every layer
-- **Responsive UI** — Full desktop sidebar layout + mobile header with slide-out navigation and FAB quick actions
+```
+Demo credentials
+Email:    demo@serviceflow.com
+Password: demo1234
+```
 
 ---
 
@@ -51,153 +39,219 @@ ServiceFlow provides structured client management, project tracking, time loggin
 
 ---
 
-## Architecture
+---
+
+## Features
+
+**Authentication**
+- JWT-based login and registration
+- bcrypt password hashing
+- Protected routes — users only access their own data
+
+**Client Management**
+- Create, edit, and delete clients
+- Store contact details and company information
+- Search and filter
+
+**Project Management**
+- Link projects to clients
+- Track status: Active, On Hold, Completed
+- Set budgets and deadlines
+
+**Task Management**
+- Kanban-style columns: To Do, In Progress, Done
+- Priority levels: High, Medium, Low
+- Filter by project and priority
+
+**Time Tracking**
+- Log billable and non-billable hours per project
+- Set hourly rates per entry
+- View total hours across projects
+
+**Invoicing**
+- Create invoices with multiple line items
+- Apply tax rates — totals calculated automatically
+- Status workflow: Draft → Sent → Paid
+- Expandable payment history per invoice
+- Balance due calculated after partial payments
+
+**Payment Tracking**
+- Record full or partial payments against invoices
+- Payment modal pre-fills the remaining balance due
+- Visual indicators: Paid in full / amount due
+
+**Analytics Dashboard**
+- Total Invoiced, Collected, Outstanding, Net Income
+- Monthly revenue bar chart (last 6 months)
+- Top clients by invoiced and collected amounts
+- Outstanding invoices list
+
+---
+
+## Tech Stack
+
+**Backend**
+- Python 3.13
+- FastAPI + Uvicorn
+- SQLAlchemy ORM
+- PyMySQL
+- Pydantic v2
+- passlib + bcrypt
+- python-jose (JWT)
+
+**Database**
+- MySQL (Railway managed)
+- Relational schema with foreign keys enforced
+- Multi-tenant — all queries scoped by user_id
+
+**Frontend**
+- HTML, CSS, Vanilla JavaScript
+- Fetch API for all backend communication
+- Chart.js for analytics visualisations
+- Responsive — mobile and desktop
+
+**Deployment**
+- Railway (backend + MySQL)
+- Environment variables for all secrets
+- Auto-deploy from GitHub main branch
+
+---
+
+## Project Structure
 
 ```
 serviceflow-crm/
 ├── backend/
 │   ├── app/
-│   │   ├── api/          # FastAPI routers
-│   │   ├── core/         # Config, JWT, security
-│   │   ├── db/           # Database connection, session
-│   │   ├── models/       # SQLAlchemy models
-│   │   ├── schemas/      # Pydantic validation schemas
-│   │   ├── services/     # Business logic layer
-│   │   └── main.py
-│   ├── seed_data.py
-│   ├── requirements.txt
-│   └── .env.example
+│   │   ├── api/
+│   │   │   └── routes/          # auth, clients, projects, tasks,
+│   │   │                        # timelogs, invoices, analytics
+│   │   ├── db/
+│   │   │   └── database.py      # SQLAlchemy engine and session
+│   │   ├── models/              # SQLAlchemy ORM models
+│   │   ├── schemas/             # Pydantic request/response schemas
+│   │   ├── services/            # Business logic (analytics_service)
+│   │   └── core/
+│   │       ├── config.py        # Settings from environment
+│   │       └── security.py      # JWT and password hashing
+│   ├── seed_data.py             # Demo data seeder
+│   └── main.py                  # FastAPI app entry point
 ├── frontend/
-│   ├── static/
-│   │   ├── css/
-│   │   ├── js/
-│   │   └── images/
-│   └── templates/
-│       └── index.html
-├── Procfile
-├── requirements.txt
+│   ├── templates/
+│   │   └── index.html           # Single page application shell
+│   └── static/
+│       ├── css/
+│       │   └── app.css          # All styles, responsive breakpoints
+│       ├── js/
+│       │   ├── api.js           # Fetch wrapper for all API calls
+│       │   ├── app.js           # App init, routing, auth state
+│       │   ├── auth.js          # Login and register forms
+│       │   ├── dashboard.js     # Analytics and charts
+│       │   ├── clients.js
+│       │   ├── projects.js
+│       │   ├── tasks.js
+│       │   ├── timelogs.js
+│       │   └── invoices.js      # Invoices and payment recording
+│       └── images/
+├── docs/
+│   └── screenshots/
 └── README.md
 ```
 
-### Backend Stack
-- **Python** + **FastAPI** + **Uvicorn**
-- **SQLAlchemy ORM** with relational schema and foreign key enforcement
-- **MySQL** database
-- **JWT authentication** via python-jose
-- **bcrypt** password hashing via passlib
-- **Pydantic** request/response validation
+---
 
-### Frontend Stack
-- Vanilla **HTML**, **CSS**, **JavaScript**
-- **Fetch API** for all HTTP communication
-- **Chart.js** for analytics charts
-- Single-page application served directly from FastAPI
+## Database Schema
 
-### Architecture Patterns
-- Service layer returning `(result, error)` tuples for clean error handling
-- Ownership validation at every endpoint — users cannot access other users' data
-- Pydantic schemas enforce input validation before reaching the database
-- SQLAlchemy models with enums for status fields
+```
+users
+  └── clients
+  └── projects
+        └── tasks
+        └── time_logs
+  └── invoices
+        └── invoice_items
+        └── payments
+```
+
+All tables include `user_id` foreign key. No cross-tenant data access is possible at the query level.
 
 ---
 
 ## Local Setup
 
-### Prerequisites
+**Requirements**
 - Python 3.10+
 - MySQL running locally
 
-### 1. Clone the repository
+**Steps**
+
 ```bash
+# Clone
 git clone https://github.com/daveak17/serviceflow-crm.git
-cd serviceflow-crm
-```
+cd serviceflow-crm/backend
 
-### 2. Backend setup (Windows PowerShell)
-```powershell
-cd backend
+# Create virtual environment
 python -m venv .venv
+
+# Activate (Windows PowerShell)
 .\.venv\Scripts\Activate.ps1
-pip install -r requirements.txt
-copy .env.example .env
-```
 
-### 2. Backend setup (Linux / macOS)
-```bash
-cd backend
-python -m venv .venv
+# Activate (macOS/Linux)
 source .venv/bin/activate
+
+# Install dependencies
 pip install -r requirements.txt
-cp .env.example .env
 ```
 
-### 3. Configure environment variables
-Edit `backend/.env`:
-```
-DATABASE_URL=mysql+pymysql://user:password@localhost:3306/serviceflow_db
-SECRET_KEY=your_secret_key_here
+Create a `.env` file in `backend/`:
+
+```env
+DATABASE_URL=mysql+pymysql://your_user:your_password@localhost:3306/serviceflow_db
+SECRET_KEY=your-secret-key-here
 ALGORITHM=HS256
 ACCESS_TOKEN_EXPIRE_MINUTES=60
-APP_NAME=ServiceFlow CRM
-APP_ENV=development
-DEBUG=True
-ALLOWED_ORIGINS=http://localhost:8000
+DEBUG=true
 ```
 
-### 4. Run the application
 ```bash
+# Create database tables and run
 cd backend
-uvicorn app.main:app --reload
-```
+python main.py
 
-Open: http://localhost:8000
-
-### 5. Seed demo data (optional)
-```bash
-cd backend
+# Seed demo data (optional)
 python seed_data.py
 ```
 
-Demo credentials: `demo@serviceflow.com` / `demo1234`
+App runs at `http://localhost:8000`
 
 ---
 
-## API Documentation
+## Deployment (Railway)
 
-Swagger UI available at:
-```
-http://localhost:8000/docs
-```
-
-All protected endpoints require a Bearer token in the Authorization header.
+1. Push repo to GitHub
+2. Create a new Railway project
+3. Add a MySQL service
+4. Deploy from GitHub — Railway auto-detects Python
+5. Set environment variables in Railway Variables tab:
+   - `DATABASE_URL` — from Railway MySQL `MYSQL_URL`
+   - `SECRET_KEY` — any long random string
+   - `ALGORITHM=HS256`
+   - `ACCESS_TOKEN_EXPIRE_MINUTES=60`
+6. Railway deploys on every push to `main`
 
 ---
 
 ## Security
 
-- Passwords hashed with bcrypt (never stored in plain text)
+- Passwords hashed with bcrypt (cost factor 12)
 - JWT tokens with configurable expiry
-- Every protected endpoint validates token and user ownership
-- Cross-user data access prevented at the service layer
-- Secrets managed via environment variables (never committed)
-- `UniqueConstraint` on invoice numbers with 409 conflict response
-
----
-
-## Deployment
-
-Deployed on **Railway** with a managed MySQL database.
-
-- FastAPI app served via Uvicorn on dynamic `$PORT`
-- MySQL 9.4 on Railway internal network
-- Environment variables configured via Railway dashboard
-- Auto-deploy on push to `main` branch via GitHub integration
+- All API routes require `Authorization: Bearer <token>`
+- Every database query filters by authenticated `user_id`
+- No secrets in source code — all via environment variables
 
 ---
 
 ## Author
 
-**David Akoda**  
-Junior Software Engineer — full-stack development, SaaS systems, production-ready backend architecture.
-
+David — Junior Software Engineer  
 GitHub: https://github.com/daveak17
