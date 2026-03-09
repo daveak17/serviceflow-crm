@@ -1069,12 +1069,12 @@ textarea {
   .form-row { grid-template-columns: 1fr; }
 
   /* Hide less critical table columns on mobile */
-  .table th:nth-child(3),
-  .table td:nth-child(3),
-  .table th:nth-child(4),
-  .table td:nth-child(4) {
+  .invoices-table th:nth-child(4),
+  .invoices-table td:nth-child(4),
+  .invoices-table th:nth-child(6),
+  .invoices-table td:nth-child(6) {
     display: none;
-  }
+}
 
   /* Charts full width */
   .charts-grid { grid-template-columns: 1fr; }
